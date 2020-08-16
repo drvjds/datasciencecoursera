@@ -1,0 +1,41 @@
+---
+title: "MyMap"
+author: "Vipul Jha"
+date: "16 August 2020"
+output: html_document
+---
+
+##  Overview
+
+- Create a web page using R Markdown that features a map created with Leaflet.
+- Host your webpage on either GitHub Pages, RPubs, or NeoCities.
+- Your webpage must contain the date that you created the document, and it must contain a map created with Leaflet. 
+
+I am using 20 random locations because I couldn't find a dataset I was particularly looking for.
+
+## Map
+
+```{r}
+# Loading the required packages
+
+library(leaflet)
+```
+
+Creating a data frame containg the Latitude and Longitude of the 20 locations and plotting them on the map using leaflet.
+
+```{r}
+set.seed(1234)
+
+df <- data.frame(lat= runif(20, min = 40, max = 70), long=runif(20, min = 40, max = 140))
+
+# A view at the contents of the data frame
+str(df)
+head(df)
+```
+
+## Plotting in Map
+
+```{r}
+df %>% leaflet( width = 1000) %>% addTiles() %>%
+  addMarkers(clusterOptions = markerClusterOptions())
+```
