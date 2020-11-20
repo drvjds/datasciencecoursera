@@ -1,0 +1,178 @@
+---
+title: "Milestone Report"
+author: "Vipul Jha"
+date: "18/11/2020"
+output:
+  html_document: default
+---
+
+## Summary
+
+The motive of the capstone project is to create a predictive text model using a large dataset as training data. We will use Natural language processing techniques will be used to build the predictive model.
+
+This report describes the major features of the training data used in this project with exploratory data analysis for creating the predictive model.
+
+## Getting the data
+
+```{r }
+## Loading the required modules 
+library(downloader)
+library(plyr);
+library(dplyr)
+library(knitr)
+library(tm)
+
+## Download the dataset and unzip folder
+## Check if directory already exists
+
+if(!file.exists("./Documents")){
+  dir.create("./Documents")
+}
+
+Url <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+
+## Check if zip has already been downloaded in Documents directory
+
+if(!file.exists("./Documents/Coursera-SwiftKey.zip")){
+  download.file(Url,destfile="./Documents/Coursera-SwiftKey.zip",mode = "wb")
+}
+## Check if zip has already been unzipped
+
+if(!file.exists("./Documents/final")){
+  unzip(zipfile="./Documents/Coursera-SwiftKey.zip",exdir="./Documents")
+}
+``` 
+
+We will read the dataset line by line.
+
+List all the files of /final/en_US Dataset folder
+The data sets consist of text from 3 different sources: 1) News, 2) Blogs and 3) Twitter feeds. We will only focus on the English - US data sets.
+
+```{r}
+path <- file.path("./Documents/final" , "en_US")
+files<-list.files(path, recursive=TRUE)
+
+# For Twitter data set
+
+con <- file("./Documents/final/en_US/en_US.twitter.txt", "r") 
+Twitter_line<-readLines(con, skipNul = TRUE)
+close(con)
+
+# For Blogs dataset
+
+con <- file("./Documents/final/en_US/en_US.blogs.txt", "r") 
+Blogs_line<-readLines(con, skipNul = TRUE)
+close(con)
+
+# For News data set
+
+con <- file("./Documents/final/en_US/en_US.news.txt", "r") 
+News_line<-readLines(con, skipNul = TRUE)
+close(con)
+```
+
+We examined the data sets and our findings (file sizes, line counts, word counts, and mean words per line) are shown below.
+
+```{r}
+library(stringi)
+
+# Get file sizes
+
+Blogs_line.size <- file.info("./Documents/final/en_US/en_US.blogs.txt")$size / 1024 ^ 2
+News_line.size <- file.info("./Documents/final/en_US/en_US.news.txt")$size / 1024 ^ 2
+Twitter_line.size <- file.info("./Documents/final/en_US/en_US.twitter.txt")$size / 1024 ^ 2
+
+# Get words in files
+
+Blogs_line.words <- stri_count_words(Blogs_line)
+News_line.words <- stri_count_words(News_line)
+Twitter_line.words <- stri_count_words(Twitter_line)
+
+# Summary of the data sets
+
+data.frame(source = c("blogs", "news", "twitter"),
+           file.size.MB = c(Blogs_line.size, News_line.size, Twitter_line.size),
+           num.lines = c(length(Blogs_line), length(News_line), length(Twitter_line)),
+           num.words = c(sum(Blogs_line.words), sum(News_line.words), sum(Twitter_line.words)),
+           mean.num.words = c(mean(Blogs_line.words), mean(News_line.words), mean(Twitter_line.words)))
+```
+
+## Cleaning The Data
+
+```{r}
+library(tm)
+
+# Sample the data
+
+set.seed(5000)
+data.sample <- c(sample(Blogs_line, length(Blogs_line) * 0.02),
+                 sample(News_line, length(News_line) * 0.02),
+                 sample(Twitter_line, length(Twitter_line) * 0.02))
+
+# Create corpus and clean the data
+
+corpus <- VCorpus(VectorSource(data.sample))
+toSpace <- content_transformer(function(x, pattern) gsub(pattern, " ", x))
+corpus <- tm_map(corpus, toSpace, "(f|ht)tp(s?)://(.*)[.][a-z]+")
+corpus <- tm_map(corpus, toSpace, "@[^\\s]+")
+corpus <- tm_map(corpus, tolower)
+corpus <- tm_map(corpus, removeWords, stopwords("en"))
+corpus <- tm_map(corpus, removePunctuation)
+corpus <- tm_map(corpus, removeNumbers)
+corpus <- tm_map(corpus, stripWhitespace)
+corpus <- tm_map(corpus, PlainTextDocument)
+```
+
+##Exploratory Analysis
+
+```{r}
+library(RWeka)
+library(ggplot2)
+##annotate
+options(mc.cores=1)
+
+# We will get the frequencies of the word
+getFreq <- function(tdm) {
+  freq <- sort(rowSums(as.matrix(tdm)), decreasing = TRUE)
+  return(data.frame(word = names(freq), freq = freq))
+}
+bigram <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
+trigram <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3))
+makePlot <- function(data, label) {
+  ggplot(data[1:30,], aes(reorder(word, -freq), freq)) +
+         labs(x = label, y = "Frequency") +
+         theme(axis.text.x = element_text(angle = 60, size = 12, hjust = 1)) +
+         geom_bar(stat = "identity", fill = I("blue"))
+}
+
+# Get frequencies of most common n-grams in data sample
+f1 <- getFreq(removeSparseTerms(TermDocumentMatrix(corpus), 0.9999))
+f2 <- getFreq(removeSparseTerms(TermDocumentMatrix(corpus, control = list(tokenize = bigram)), 0.9999))
+f3 <- getFreq(removeSparseTerms(TermDocumentMatrix(corpus, control = list(tokenize = trigram)), 0.9999))
+```
+
+Histogram of the most common 30 unigrams in the data sample.
+
+```{r}
+makePlot(f1, "Most Common 30 Uni-grams")
+```
+
+Histogram of the most common 30 bigrams in the data sample.
+
+```{r}
+makePlot(f2, "Most Common 30 Bi-grams")
+```
+
+Histogram of the most common 30 trigrams in the data sample.
+
+```{r}
+makePlot(f3, "30 Most Common Tri-grams")
+```
+
+## Conclusion and further planning
+
+We are done with the exploratory analysis. TNow we will have to finalize our predictive algorithm, and deploy our algorithm as a Shiny app.
+
+Our predictive algorithm will be using n-gram model with frequency lookup similar to our exploratory analysis above. One possible strategy would be to use the trigram model to predict the next word. It would start off with matching for trigram. If not found, it will try matching bigrams, and if still unsuccessful, it will go for unigrams.
+
+
