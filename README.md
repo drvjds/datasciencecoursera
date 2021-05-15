@@ -1,3 +1,6 @@
+The Working of the Capstone Project can be seen at https://drvjds.shinyapps.io/PredictWord/ .
+
+
 Peer graded Assignment for Getting and Cleaning Data Course:
 
 Dataset: Human Activity Recognition Using Smartphones
@@ -15,3 +18,5 @@ run_analysis.R : Performs data operations and executes the following 5 steps as 
 CodeBook.md : A code book for reference that describes the variables, the data, and data used to performe to clean up the data.
 
 Final.txt: It is the exported final data after executing all the operations described above.
+
+
